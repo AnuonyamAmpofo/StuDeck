@@ -1,51 +1,68 @@
-
 import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
-import Streak from "../components/Streak"
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Streak from "../components/Streak";
+import AddTaskModal from "../components/AddTaskModal";
 
 export default function HomeScreen() {
+
   return (
-    // <SafeAreaView style={{paddingTop: 30}}>
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       {/* Header Section */}
       <View style={styles.header}>
-        <Text style={styles.appLogo}>StuDeck</Text>
+        <View style={styles.logoSect}>
+        <Image source={require("../../assets/Studeck Logo.png")} style={styles.logo}/>
+        <Text style={styles.appLogo}>Studeck</Text>
+        </View>
         <View style={styles.headerIcons}>
+          <TouchableOpacity>
           <Text style={styles.icon}>🔔</Text>
-          <Text style={styles.icon}>👤</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity>
+            <Text style={styles.icon}>👤</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* Urgent Task */}
       <View style={styles.urgentTask}>
-        <Text style={styles.urgentTitle}>Most Urgent Task</Text>
+        <Text style={styles.urgentTitle}>Up Next...</Text>
         <Text style={styles.urgentText}>Finish Math Assignment 📘</Text>
       </View>
 
       {/* Streak Card */}
-      <Streak streakDays={142} completedDays={["Mon", "Tue", "Wed", "Thu"]} />
+      <Streak streakDays={142} completedDays={["Mon", "Tue", "Wed"]} />
 
+      {/* Tasks Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Your Tasks</Text>
 
-      {/* Study Progress Section */}
-      <Text style={styles.sectionTitle}>Your Courses</Text>
-      <View style={styles.studyGrid}>
-        <TouchableOpacity style={styles.studyCard}>
-          <Text style={styles.courseName}>Math 101</Text>
-          <Text style={styles.progress}>Progress: 60%</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.studyCard}>
-          <Text style={styles.courseName}>History</Text>
-          <Text style={styles.progress}>Progress: 20%</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.studyCard}>
-          <Text style={styles.courseName}>Biology</Text>
-          <Text style={styles.progress}>Progress: 40%</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.studyCard}>
-          <Text style={styles.courseName}>CS 202 </Text>
-          <Text style={styles.progress}>Progress: 75%</Text>
-        </TouchableOpacity>
+        <View style={styles.taskGrid}>
+          {/* Task 1 */}
+          <View style={styles.taskCard}>
+            <Text style={styles.taskText}>Task 1</Text>
+          </View>
+
+          {/* Task 2 */}
+          <View style={styles.taskCard}>
+            <Text style={styles.taskText}>Task 2</Text>
+          </View>
+
+          {/* Task 3 */}
+          <View style={styles.taskCard}>
+            <Text style={styles.taskText}>Task 3</Text>
+          </View>
+
+          {/* More + Add Buttons */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={[styles.taskCard, styles.moreCard]}>
+              <Text style={styles.btnText}>More</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.taskCard, styles.addCard]}>
+              <Text style={styles.btnText}>+ Add</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       {/* Mini Calendar Placeholder */}
@@ -54,8 +71,6 @@ export default function HomeScreen() {
         <Text style={styles.calendarText}>📅 Mini Calendar Component Here</Text>
       </View>
     </ScrollView>
-  // </SafeAreaView>
-
   );
 }
 
@@ -65,6 +80,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9f9f9",
     paddingHorizontal: 20,
     paddingVertical: 20,
+    marginBottom: 20,
   },
   header: {
     flexDirection: "row",
@@ -72,18 +88,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 20,
   },
+  logoSect:{
+    flexDirection: "row",
+    alignItems: "center"
+  },
   appLogo: {
-    fontFamily: "Century Gothic",
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 24,
-    fontWeight: "400",
+    // fontWeight: "400",
+  },
+  logo: {
+    width:70,
+    height: 50 
   },
   headerIcons: {
     flexDirection: "row",
     gap: 15,
+    alignItems: "center"
   },
   icon: {
     fontSize: 20,
   },
+
   urgentTask: {
     backgroundColor: "#ffe6e6",
     padding: 15,
@@ -100,60 +126,68 @@ const styles = StyleSheet.create({
     fontFamily: "Onest",
     fontSize: 14,
   },
-  streakCard: {
-    backgroundColor: "#e6f7ff",
-    padding: 20,
-    borderRadius: 16,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  streakNumber: {
-    fontFamily: "Onest",
-    fontSize: 32,
-    fontWeight :'bold',
-    color: "#007acc",
-  },
-  streakLabel: {
-    fontFamily: "Onest",
-    fontSize: 14,
-    color: "#555",
-    marginTop: 4,
+
+  section: {
+    marginTop: 24,
   },
   sectionTitle: {
     fontFamily: "Onest",
     fontSize: 18,
-    fontWeight: 'bold',
+    // fontWeight: "bold",
     marginBottom: 10,
   },
-  studyGrid: {
+
+  taskGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: 20,
+    gap: 7,
   },
-  studyCard: {
-    backgroundColor: "#fff",
+  taskCard: {
+    backgroundColor: "#e5e7eb",
+    padding: 16,
     borderRadius: 12,
-    width: "47%",
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
-    elevation: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: "48%",
+    maxWidth: "48%",
+    marginBottom: 12,
+    height: 70
   },
-  courseName: {
-    fontFamily: "Onest",
-    fontSize: 19,
-    marginBottom: 8,
-    // fontWeight: '700'
+  taskText: {
+    fontSize: 18,
+    fontFamily: 'Poppins_600SemiBold',
+    color: "#111827",
   },
-  progress: {
-    fontFamily: "Onest",
+
+  actionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minWidth: "48%",
+    maxWidth: "48%",
+    marginBottom: 12,
+  },
+  moreCard: {
+    backgroundColor: "#9ca3af",
+    flex: 1,
+    // marginRight: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addCard: {
+    backgroundColor: "#3b82f6",
+    flex: 1,
+    marginLeft: 6,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  btnText: {
+    color: "white",
+    fontFamily: 'Montserrat_700Bold',
+    // fontWeight: "bold",
     fontSize: 14,
-    color: "#666",
   },
+
   calendarBox: {
     backgroundColor: "#fff",
     borderRadius: 16,

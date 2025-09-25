@@ -6,7 +6,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts as useMontserrat, Montserrat_400Regular, Montserrat_700Bold } from '@expo-google-fonts/montserrat';
-import { useFonts as usePoppins, Poppins_400Regular, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import { useFonts as usePoppins, Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold, Poppins_900Black } from '@expo-google-fonts/poppins';
 // import AppLoading from 'expo-app-loading';
 
 // Screens
@@ -26,11 +26,15 @@ export default function App() {
   });
   const [montserratLoaded] = useMontserrat({
     Montserrat_400Regular,
+    // Montserrat_600SemiBold,
     Montserrat_700Bold,
   });
   const [poppinsLoaded] = usePoppins({
     Poppins_400Regular,
+    Poppins_600SemiBold,
     Poppins_700Bold,
+    Poppins_800ExtraBold,
+    Poppins_900Black,
   });
 
   const allFontsLoaded = onestLoaded && montserratLoaded && poppinsLoaded;
@@ -50,7 +54,27 @@ export default function App() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarStyle: { backgroundColor: "#fff" },
+          tabBarStyle: { position: "absolute",
+            bottom: 30,
+            left: 20,
+            right: 20,
+            backgroundColor: "#fff",
+            borderRadius: 50,
+            height: 70,
+            shadowColor: "#000",
+            shadowOpacity: 0.1,
+            shadowOffset: { width: 0, height: 4 },
+            shadowRadius: 10,
+            elevation: 5,
+            marginHorizontal: 7,
+            // justifyContent:"center"
+
+          },
+          tabBarItemStyle:{
+            justifyContent: "center",
+            alignItems: "center",
+            paddingVertical: 7,
+          },
           tabBarLabelStyle: { fontFamily: "Montserrat_700Bold" },
           tabBarIcon: ({ focused, size }) => {
             let iconSource;
