@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+Studeck-backend/
 
 # Expo
 .expo/
@@ -39,3 +40,4 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+.env

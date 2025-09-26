@@ -98,8 +98,8 @@ const styles = StyleSheet.create({
     // fontWeight: "400",
   },
   logo: {
-    width:70,
-    height: 50 
+    width: 65,
+    height: 40, 
   },
   headerIcons: {
     flexDirection: "row",
