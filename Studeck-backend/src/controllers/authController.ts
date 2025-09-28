@@ -7,13 +7,15 @@ import User from '../models/User';
 
 const ACCESS_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
 
-function signAccessToken(userId: string) {
-  const secret = process.env.JWT_SECRET!;
+function signAccessToken(userId: string): string {
+  const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is not set in environment variables");
-  return jwt.sign({ id: userId }, secret, { expiresIn: ACCESS_TTL });
+  
+  // Use the string directly without type issues
+  return jwt.sign({ id: userId }, secret, { expiresIn: '15m' });
 }
 
-function makeRefreshToken() {
+function makeRefreshToken(): string {
   return crypto.randomBytes(48).toString('hex');
 }
 
@@ -33,7 +35,15 @@ export const register = async (req: Request, res: Response) => {
     user.refreshTokens = [refreshToken];
     await user.save();
 
-    res.json({ accessToken, refreshToken, user: { id: user._id, username: user.username, email: user.email } });
+    res.json({ 
+      accessToken, 
+      refreshToken, 
+      user: { 
+        id: user._id, 
+        username: user.username, 
+        email: user.email 
+      } 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -58,7 +68,15 @@ export const login = async (req: Request, res: Response) => {
     user.refreshTokens.push(refreshToken);
     await user.save();
 
-    res.json({ accessToken, refreshToken, user: { id: user._id, username: user.username, email: user.email } });
+    res.json({ 
+      accessToken, 
+      refreshToken, 
+      user: { 
+        id: user._id, 
+        username: user.username, 
+        email: user.email 
+      } 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -73,7 +91,7 @@ export const refresh = async (req: Request, res: Response) => {
     const user = await User.findOne({ refreshTokens: refreshToken });
     if (!user) return res.status(401).json({ message: 'Invalid refresh token' });
 
-    // rotate
+    // rotate tokens
     const newRefresh = makeRefreshToken();
     user.refreshTokens = user.refreshTokens.filter(t => t !== refreshToken);
     user.refreshTokens.push(newRefresh);
@@ -91,7 +109,14 @@ export const logout = async (req: Request, res: Response) => {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) return res.status(400).json({ message: 'Missing refresh token' });
-    await User.updateOne({}, { $pull: { refreshTokens: refreshToken } });
+    
+    // Fix: Find the user first, then remove the token
+    const user = await User.findOne({ refreshTokens: refreshToken });
+    if (user) {
+      user.refreshTokens = user.refreshTokens.filter(t => t !== refreshToken);
+      await user.save();
+    }
+    
     res.json({ message: 'Logged out' });
   } catch (err) {
     console.error(err);
