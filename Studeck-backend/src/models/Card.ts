@@ -1,6 +1,7 @@
 import mongoose, {Document, Schema} from "mongoose";
 
 export interface ICard extends Document{
+  _id: mongoose.Types.ObjectId;
   front: string;
   back: string;
   deckId: mongoose.Types.ObjectId;

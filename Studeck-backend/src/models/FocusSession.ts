@@ -6,6 +6,7 @@ const focusSessionSchema = new mongoose.Schema({
   endTime: { type: Date }, 
   duration: { type: Number }, 
   mode: { type: String, enum: ["focus", "break"], default: "focus" },
+  focusType: {type: String, enum: ["Pomodoro", "Custom"], default: "Custom"},
   notes: { type: String }, 
 }, { timestamps: true });
 
