@@ -49,7 +49,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({
     confirmPassword: '',
   });
 
-  const API_BASE_URL = 'http://172.30.224.1:5000/api'; // Change to your backend URL
+  const API_BASE_URL = 'http://172.28.0.1:5000/api';
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -146,7 +146,7 @@ const TaskGrid: React.FC<TaskGridProps> = ({
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const API_BASE_URL = 'http://172.18.32.1:5000/api';
+  const API_BASE_URL = 'http://172.28.0.1:5000/api';
 
   // Fetch tasks from backend
   const fetchTasksWithAuth = async (): Promise<Task[]> => {
@@ -166,7 +166,7 @@ const TaskGrid: React.FC<TaskGridProps> = ({
 
         if (response.ok) {
           const data = await response.json();
-          console.log('Tasks response:', data);
+          // console.log('Tasks response:', data);
           if (Array.isArray(data)) {
             return data.slice(0, 3);
           }
@@ -225,7 +225,7 @@ const TaskGrid: React.FC<TaskGridProps> = ({
       }
 
       const data = await response.json();
-      console.log('Tasks response:', data);
+      // console.log('Tasks response:', data);
       
       if (data.success && data.tasks) {
         setTasks(data.tasks.slice(0, 3)); // Only take first 3

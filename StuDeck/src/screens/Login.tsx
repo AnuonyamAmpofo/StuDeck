@@ -45,7 +45,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({ email: '', password: '' });
 
-  const API_BASE_URL = 'http://172.18.32.1:5000/api'; // Change to your backend URL
+  const API_BASE_URL = 'http://172.28.0.1:5000/api';
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -103,11 +103,11 @@ const LoginPage: React.FC<LoginPageProps> = ({
       }
 
       if (data.accessToken) {
-        // Alert.alert('Success', 'Login successful!');
+      
 
         await SecureStore.setItemAsync('accessToken', data.accessToken);
       await SecureStore.setItemAsync('refreshToken', data.refreshToken);
-      await SecureStore.setItemAsync('username', data.user.username); // ← ADD THIS
+      await SecureStore.setItemAsync('username', data.user.username); 
       await SecureStore.setItemAsync('email', data.user.email);
       await SecureStore.setItemAsync('userId', data.user.id);
         if (onLoginSuccess) {

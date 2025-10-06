@@ -56,7 +56,7 @@ const CalendarScreen: React.FC<TasksCalendarScreenProps> = ({ navigation }) => {
 
   const priorities: Array<'all' | 'low' | 'medium' | 'high'> = ['all', 'low', 'medium', 'high'];
 
-  const API_BASE_URL = 'http://172.18.32.1:5000/api';
+  const API_BASE_URL = 'http://172.28.0.1:5000/api';
   const TASKS_CACHE_KEY = 'tasks_cache';
 
   useEffect(() => {
@@ -357,7 +357,7 @@ const CalendarScreen: React.FC<TasksCalendarScreenProps> = ({ navigation }) => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <Calendar
           theme={{
-            backgroundColor: '#fff',
+            backgroundColor: '#ffffffff',
             calendarBackground: '#fff',
             textSectionTitleColor: '#888',
             selectedDayBackgroundColor: PRIMARY,
@@ -482,10 +482,10 @@ const CalendarScreen: React.FC<TasksCalendarScreenProps> = ({ navigation }) => {
     return `${year}-${month}-${day}`;
   }
 
-  console.log('selectedDate:', selectedDate);
+  // console.log('selectedDate:', selectedDate);
   tasks.forEach(task => {
     const taskDate = new Date(task.dueDate).toISOString().split('T')[0];
-    console.log('task:', task.title, 'taskDate:', taskDate);
+    // console.log('task:', task.title, 'taskDate:', taskDate);
   });
 
   return (
@@ -494,7 +494,7 @@ const CalendarScreen: React.FC<TasksCalendarScreenProps> = ({ navigation }) => {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.appTitle}>Planner</Text>
+        <Text style={styles.appTitle}>Planners</Text>
         <TouchableOpacity style={styles.userButton}>
           <Icon name="person" size={16} color="#fff" />
           <Text style={styles.username}>{username}</Text>

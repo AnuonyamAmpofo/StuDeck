@@ -27,7 +27,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
       const getUsername = async (token: string | null) => {
         if (!token) return false;
         try {
-          const res = await fetch("http://172.18.32.1:5000/api/users/me", {
+          const res = await fetch("http://172.28.0.1:5000/api/users/me", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -47,7 +47,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
               return false;
             }
             // Get new access token
-            const refreshRes = await fetch("http://172.18.32.1:5000/api/auth/refresh", {
+            const refreshRes = await fetch("http://172.28.0.1:5000/api/auth/refresh", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ refreshToken }),
@@ -104,7 +104,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
       const getTasks = async (token: string | null): Promise<Task[]> => {
         if (!token) return [];
         try {
-          const res = await fetch("http://172.18.32.1:5000/api/tasks", {
+          const res = await fetch("http://172.28.0.1:5000/api/tasks", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -116,7 +116,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
             triedRefresh = true;
             const refreshToken = await SecureStore.getItemAsync('refreshToken');
             if (!refreshToken) return [];
-            const refreshRes = await fetch("http://172.18.32.1:5000/api/auth/refresh", {
+            const refreshRes = await fetch("http://172.28.0.1:5000/api/auth/refresh", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ refreshToken }),
