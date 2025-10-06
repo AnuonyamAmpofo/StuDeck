@@ -1,15 +1,17 @@
 // App.tsx
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { Image } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useFonts as useMontserrat, Montserrat_400Regular, Montserrat_700Bold } from '@expo-google-fonts/montserrat';
-import { useFonts as usePoppins, Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold, Poppins_900Black } from '@expo-google-fonts/poppins';
-// import AppLoading from 'expo-app-loading';
+import * as SecureStore from "expo-secure-store";
+import { useFonts as useMontserrat, Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold, Montserrat_800ExtraBold, Montserrat_900Black } from '@expo-google-fonts/montserrat';
+import { useFonts as usePoppins, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold, Poppins_900Black } from '@expo-google-fonts/poppins';
 
 // Screens
+import LoginPage from "./src/screens/Login";
+import SignupPage from "./src/screens/SignUp";
 import HomeScreen from "./src/screens/Home";
 import CalendarScreen from "./src/screens/Calendar";
 import CourseScreen from "./src/screens/Course";
@@ -26,11 +28,15 @@ export default function App() {
   });
   const [montserratLoaded] = useMontserrat({
     Montserrat_400Regular,
-    // Montserrat_600SemiBold,
+    Montserrat_500Medium,
+    Montserrat_600SemiBold,
     Montserrat_700Bold,
+    Montserrat_800ExtraBold,
+    Montserrat_900Black
   });
   const [poppinsLoaded] = usePoppins({
     Poppins_400Regular,
+    Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
     Poppins_800ExtraBold,
@@ -45,8 +51,63 @@ export default function App() {
     }
   }, [allFontsLoaded]);
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  // Try auto-login on app start
+  useEffect(() => {
+    const tryAutoLogin = async () => {
+      const refreshToken = await SecureStore.getItemAsync('refreshToken');
+      if (!refreshToken) return;
+      try {
+        const res = await fetch('http://172.18.32.1:5000/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          await SecureStore.setItemAsync('accessToken', data.accessToken); // <-- Add this!
+          await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+          setAccessToken(data.accessToken);
+          setIsLoggedIn(true);
+        }
+      } catch (err) {
+        // Optionally handle error
+      }
+    };
+    tryAutoLogin();
+  }, []);
+
   if (!allFontsLoaded) {
     return null;
+  }
+
+  if (!isLoggedIn) {
+    if (showSignup) {
+      return (
+        <SignupPage
+          onNavigateToLogin={() => setShowSignup(false)}
+          onSignUpSuccess={async (data) => {
+            await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+            setAccessToken(data.accessToken);
+            setIsLoggedIn(true);
+            setShowSignup(false);
+          }}
+        />
+      );
+    }
+    return (
+      <LoginPage
+        onLoginSuccess={async (data) => {
+          await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+          setAccessToken(data.accessToken);
+          setIsLoggedIn(true);
+        }}
+        onNavigateToSignup={() => setShowSignup(true)}
+      />
+    );
   }
 
   return (
@@ -54,8 +115,9 @@ export default function App() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarStyle: { position: "absolute",
-            bottom: 30,
+          tabBarStyle: {
+            position: "absolute",
+            bottom: 5,
             left: 20,
             right: 20,
             backgroundColor: "#fff",
@@ -67,10 +129,8 @@ export default function App() {
             shadowRadius: 10,
             elevation: 5,
             marginHorizontal: 7,
-            // justifyContent:"center"
-
           },
-          tabBarItemStyle:{
+          tabBarItemStyle: {
             justifyContent: "center",
             alignItems: "center",
             paddingVertical: 7,
@@ -88,7 +148,7 @@ export default function App() {
             } else if (route.name === "Focus") {
               iconSource = require("./assets/icons/focus.png");
             } else if (route.name === "Analytics") {
-              iconSource = require("./assets/icons/analytics.png"); 
+              iconSource = require("./assets/icons/analytics.png");
             }
 
             return (
@@ -104,7 +164,18 @@ export default function App() {
           },
         })}
       >
-        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen
+          name="Home"
+          children={(props) => (
+            <HomeScreen
+              {...props}
+              onLogout={() => {
+                setIsLoggedIn(false);
+                setAccessToken(null);
+              }}
+            />
+          )}
+        />
         <Tab.Screen name="Calendar" component={CalendarScreen} />
         <Tab.Screen name="Courses" component={CourseScreen} />
         <Tab.Screen name="Focus" component={FocusScreen} />

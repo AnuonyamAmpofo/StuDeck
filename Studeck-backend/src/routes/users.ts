@@ -1,11 +1,10 @@
-// src/routes/auth.ts
+// src/routes/users.ts
 import { Router } from 'express';
-import { register, login, refresh, logout } from '../controllers/authController';
+import { getMe, updateMe, deleteMe } from '../controllers/userController';
+import auth from '../middleware/auth';
 
 const router = Router();
-
-router.post('/register', register);
-router.post('/login', login);
-router.post('/refresh', refresh);
-router.post('/logout', logout);
+router.get('/me', auth, getMe);
+router.put('/me', auth, updateMe);
+router.delete('/me', auth, deleteMe);
 export default router;

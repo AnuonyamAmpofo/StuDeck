@@ -16,6 +16,7 @@ import analyticsRoutes from './routes/analytics';
 import studyRoutes from './routes/study';
 import errorHandler from './middleware/errrorHandler';
 
+
 dotenv.config();
 const app = express();
 app.use(helmet());
@@ -44,5 +45,5 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 // error handler (last)
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+ app.listen(5000);

@@ -1,76 +1,252 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, StatusBar, Alert } from "react-native";
 import Streak from "../components/Streak";
 import AddTaskModal from "../components/AddTaskModal";
+import AssignmentsList from "../components/TasksCard";
+import { jwtDecode } from "jwt-decode";
+import * as SecureStore from "expo-secure-store";
+import type { Task } from "../components/TasksCard";
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
-export default function HomeScreen() {
+type HomeScreenProps = BottomTabScreenProps<any, 'Home'> & {
+  onLogout: () => void;
+};
+
+export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
+  const [username, setUsername] = useState("...");
+  const [error, setError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [refreshTasksFlag, setRefreshTasksFlag] = useState(false);
+  const [mostUrgentTask, setMostUrgentTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      let accessToken = await SecureStore.getItemAsync('accessToken');
+      let triedRefresh = false;
+
+      const getUsername = async (token: string | null) => {
+        if (!token) return false;
+        try {
+          const res = await fetch("http://172.18.32.1:5000/api/users/me", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setUsername(data.username);
+            setError(null);
+            return true;
+          } else if (res.status === 401 && !triedRefresh) {
+            // Token expired, try refresh
+            triedRefresh = true;
+            const refreshToken = await SecureStore.getItemAsync('refreshToken');
+            if (!refreshToken) {
+              setError("Session expired. Please log in again.");
+              setUsername("Guest");
+              return false;
+            }
+            // Get new access token
+            const refreshRes = await fetch("http://172.18.32.1:5000/api/auth/refresh", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ refreshToken }),
+            });
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              await SecureStore.setItemAsync('accessToken', refreshData.accessToken);
+              await SecureStore.setItemAsync('refreshToken', refreshData.refreshToken);
+              // Retry with new access token
+              return await getUsername(refreshData.accessToken);
+            } else {
+              setError("Session expired. Please log in again.");
+              setUsername("Guest");
+              return false;
+            }
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            setError(errData.message || `Error: ${res.status}`);
+            setUsername("Guest");
+            return false;
+          }
+        } catch (err: any) {
+          setError(err.message || "Network error");
+          setUsername("Guest");
+          return false;
+        }
+      };
+
+      await getUsername(accessToken);
+    };
+    fetchUsername();
+  }, [refreshTasksFlag]);
+
+  useEffect(() => {
+    const logTokenInfo = async () => {
+      const accessToken = await SecureStore.getItemAsync('accessToken');
+      if (accessToken) {
+        const decoded = jwtDecode(accessToken);
+        console.log("Decoded access token:", decoded);
+      }
+    };
+    logTokenInfo();
+  }, []);
+
+  const handleTaskCreated = () => {
+    setRefreshTasksFlag(flag => !flag); // Toggle to trigger refresh
+  };
+
+  useEffect(() => {
+    const fetchMostUrgentTask = async () => {
+      let accessToken = await SecureStore.getItemAsync('accessToken');
+      let triedRefresh = false;
+
+      const getTasks = async (token: string | null): Promise<Task[]> => {
+        if (!token) return [];
+        try {
+          const res = await fetch("http://172.18.32.1:5000/api/tasks", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (res.ok) {
+            const tasks: Task[] = await res.json();
+            return tasks;
+          } else if (res.status === 401 && !triedRefresh) {
+            triedRefresh = true;
+            const refreshToken = await SecureStore.getItemAsync('refreshToken');
+            if (!refreshToken) return [];
+            const refreshRes = await fetch("http://172.18.32.1:5000/api/auth/refresh", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ refreshToken }),
+            });
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              await SecureStore.setItemAsync('accessToken', refreshData.accessToken);
+              await SecureStore.setItemAsync('refreshToken', refreshData.refreshToken);
+              return await getTasks(refreshData.accessToken);
+            } else {
+              return [];
+            }
+          } else {
+            return [];
+          }
+        } catch {
+          return [];
+        }
+      };
+
+      const allTasks = await getTasks(accessToken);
+      const now = new Date();
+      const pendingTasks = allTasks
+        .filter(
+          task =>
+            task.status === 'pending' &&
+            new Date(task.dueDate).getTime() > now.getTime()
+        )
+        .sort(
+          (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+        );
+      setMostUrgentTask(pendingTasks[0] || null);
+    };
+
+    fetchMostUrgentTask();
+  }, [refreshTasksFlag]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       {/* Header Section */}
       <View style={styles.header}>
         <View style={styles.logoSect}>
-        <Image source={require("../../assets/Studeck Logo.png")} style={styles.logo}/>
-        <Text style={styles.appLogo}>Studeck</Text>
+          <Image source={require("../../assets/Studeck Logo.png")} style={styles.logo}/>
+          <Text style={styles.appLogo}>{username}</Text>
         </View>
         <View style={styles.headerIcons}>
           <TouchableOpacity>
-          <Text style={styles.icon}>🔔</Text>
+            <Text style={styles.icon}>🔔</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity>
-            <Text style={styles.icon}>👤</Text>
+          <TouchableOpacity
+            style={styles.logoutButtonSmall}
+            onPress={() => {
+              Alert.alert(
+                "Log out",
+                "Are you sure you want to log out?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Log out",
+                    style: "destructive",
+                    onPress: async () => {
+                      await SecureStore.deleteItemAsync('accessToken');
+                      await SecureStore.deleteItemAsync('refreshToken');
+                      setUsername("Guest");
+                      setError(null);
+                      onLogout();
+                    },
+                  },
+                ],
+                { cancelable: true }
+              );
+            }}
+          >
+            <Text style={styles.logoutButtonSmallText}>Log out</Text>
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Urgent Task */}
-      <View style={styles.urgentTask}>
-        <Text style={styles.urgentTitle}>Up Next...</Text>
-        <Text style={styles.urgentText}>Finish Math Assignment 📘</Text>
-      </View>
-
-      {/* Streak Card */}
-      <Streak streakDays={142} completedDays={["Mon", "Tue", "Wed"]} />
-
-      {/* Tasks Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Tasks</Text>
-
-        <View style={styles.taskGrid}>
-          {/* Task 1 */}
-          <View style={styles.taskCard}>
-            <Text style={styles.taskText}>Task 1</Text>
+      <ScrollView
+        contentContainerStyle={{
+          paddingBottom: 40,
+          // paddingHorizontal: 20,
+          paddingVertical: 20,
+          // paddingTop:10,
+        }}
+        showsVerticalScrollIndicator={false} // <-- Add this line
+      >
+        {/* Urgent Task */}
+        <View style={styles.urgentTaskCard}>
+          <View style={styles.urgentTaskHeader}>
+            <Text style={styles.urgentTaskIcon}>⏰</Text>
+            <Text style={styles.urgentTaskTitle}>Up Next</Text>
           </View>
-
-          {/* Task 2 */}
-          <View style={styles.taskCard}>
-            <Text style={styles.taskText}>Task 2</Text>
-          </View>
-
-          {/* Task 3 */}
-          <View style={styles.taskCard}>
-            <Text style={styles.taskText}>Task 3</Text>
-          </View>
-
-          {/* More + Add Buttons */}
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={[styles.taskCard, styles.moreCard]}>
-              <Text style={styles.btnText}>More</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.taskCard, styles.addCard]}>
-              <Text style={styles.btnText}>+ Add</Text>
-            </TouchableOpacity>
-          </View>
+          {mostUrgentTask ? (
+            <>
+              <Text style={styles.urgentTaskName}>{mostUrgentTask.title}</Text>
+              {mostUrgentTask.category ? (
+                <Text style={styles.urgentTaskCategory}>{mostUrgentTask.category}</Text>
+              ) : null}
+              <Text style={styles.urgentTaskDue}>
+                Due: {new Date(mostUrgentTask.dueDate).toLocaleString()}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.urgentTaskEmpty}>No upcoming tasks 🎉</Text>
+          )}
         </View>
-      </View>
 
-      {/* Mini Calendar Placeholder */}
-      <Text style={styles.sectionTitle}>Today’s Tasks</Text>
-      <View style={styles.calendarBox}>
-        <Text style={styles.calendarText}>📅 Mini Calendar Component Here</Text>
-      </View>
-    </ScrollView>
+        {/* Streak Card */}
+        <Streak streakDays={142} completedDays={["Mon", "Tue", "Wed"]} />
+
+        {/* Tasks Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Tasks</Text>
+          <AssignmentsList navigation={navigation} refreshFlag={refreshTasksFlag} />
+        </View>
+
+        {/* Mini Calendar Placeholder */}
+        <Text style={styles.sectionTitle}>Today’s Task</Text>
+        <View style={styles.calendarBox}>
+          <Text style={styles.calendarText}>📅 Mini Calendar Component Here</Text>
+        </View>
+
+        <AddTaskModal
+          visible={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onTaskCreated={handleTaskCreated}
+        />
+      </ScrollView>
+    </View>
   );
 }
 
@@ -86,16 +262,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginVertical: 20,
+    marginTop: 10,
+    paddingTop: 10,
+    paddingBottom: 7
   },
   logoSect:{
     flexDirection: "row",
     alignItems: "center"
   },
   appLogo: {
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 24,
+    fontFamily: "Onest",
+    fontSize: 18,
     // fontWeight: "400",
+    alignItems: "center",
+    justifyContent: "center",
+    // marginVertical: 30,
   },
   logo: {
     width: 65,
@@ -109,29 +290,76 @@ const styles = StyleSheet.create({
   icon: {
     fontSize: 20,
   },
+// Replace these styles in your StyleSheet.create():
 
-  urgentTask: {
-    backgroundColor: "#ffe6e6",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  urgentTitle: {
-    fontFamily: "Onest",
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 5,
-  },
-  urgentText: {
-    fontFamily: "Onest",
-    fontSize: 14,
-  },
+urgentTaskCard: {
+  backgroundColor: "#8b5cf6",
+  borderRadius: 16,
+  padding: 16,
+  marginBottom: 20,
+  shadowColor: "#000000ff",
+  shadowOpacity: 0.7,
+  shadowOffset: { width: 7, height: 9 },
+  shadowRadius: 12,
+  elevation: 8,
+  borderLeftWidth: 5,
+  borderLeftColor: "#fbbf24",
+},
+urgentTaskHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 10,
+},
+urgentTaskIcon: {
+  fontSize: 20,
+  marginRight: 6,
+},
+urgentTaskTitle: {
+  fontFamily: "Montserrat_700Bold",
+  fontSize: 14,
+  color: "#fbbf24",
+  letterSpacing: 1.2,
+  textTransform: "uppercase",
+},
+urgentTaskName: {
+  fontFamily: "Montserrat_700Bold",
+  fontSize: 18,
+  color: "#ffffff",
+  marginBottom: 6,
+  lineHeight: 24,
+},
+urgentTaskCategory: {
+  fontFamily: "Montserrat_600SemiBold",
+  fontSize: 11,
+  color: "#8b5cf6",
+  backgroundColor: "#fbbf24",
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  borderRadius: 12,
+  alignSelf: "flex-start",
+  marginBottom: 6,
+  textTransform: "uppercase",
+  letterSpacing: 0.5,
+},
+urgentTaskDue: {
+  fontFamily: "Onest",
+  fontSize: 13,
+  color: "#fef3c7",
+  marginTop: 2,
+},
+urgentTaskEmpty: {
+  fontFamily: "Onest",
+  fontSize: 15,
+  color: "#e9d5ff",
+  textAlign: "center",
+  marginTop: 4,
+},
 
   section: {
-    marginTop: 24,
+    marginTop: 30,
   },
   sectionTitle: {
-    fontFamily: "Onest",
+    fontFamily: "Montserrat_600SemiBold",
     fontSize: 18,
     // fontWeight: "bold",
     marginBottom: 10,
@@ -204,4 +432,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#777",
   },
+
+  logoutButton: {
+    backgroundColor: "#ef4444",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 10,
+    marginHorizontal: 0,
+  },
+  logoutButtonText: {
+    color: "#fff",
+    fontFamily: "Montserrat_700Bold",
+    fontSize: 16,
+    letterSpacing: 1,
+  },
+  logoutButtonSmall: {
+    backgroundColor: "#ef4444",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoutButtonSmallText: {
+    color: "#fff",
+    fontFamily: "Montserrat_700Bold",
+    fontSize: 14,
+  },
 });
+
+interface TaskGridProps {
+  onMorePress?: () => void;
+  onAddPress?: () => void;
+  onTaskPress?: (task: Task) => void;
+  refreshFlag?: boolean;
+  navigation?: any; // <-- Add this
+}

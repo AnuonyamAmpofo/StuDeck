@@ -14,7 +14,7 @@ interface IUser extends Document {
 }
 
 const userSchema = new mongoose.Schema<IUser>({
-  _id: {type: mongoose.Schema.Types.ObjectId },
+
   username: { type: String, required: true, unique: true },
   email: { type: String, unique: true, required: true },
   password: { type: String, required: true }, // hashed
