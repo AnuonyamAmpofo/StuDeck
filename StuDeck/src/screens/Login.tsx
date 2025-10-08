@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '@env';
 
 import {
   View,
@@ -45,7 +46,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({ email: '', password: '' });
 
-  const API_BASE_URL = 'http://172.28.0.1:5000/api';
+  // const API_BASE_URL = 'http://192.168.128.1:5000/api';
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

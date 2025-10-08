@@ -1,6 +1,7 @@
 // src/controllers/deckController.ts
 import { Response } from 'express';
 import Deck from '../models/Deck';
+import Card, { ICard } from '../models/Card';
 import Course from '../models/Course';
 import { AuthRequest } from '../middleware/auth';
 
@@ -12,7 +13,12 @@ export const createDeck = async (req: AuthRequest, res: Response) => {
     if (!course) return res.status(404).json({ message: 'Course not found' });
     if (course.userId.toString() !== req.user!.id) return res.status(403).json({ message: 'Forbidden' });
 
-    const deck = await Deck.create({ title, description, courseId });
+    const deck = await Deck.create({
+      title,
+      description,
+      courseId,
+      createdBy: req.user!.id
+    });
     course.decks = course.decks || [];
     course.decks.push(deck._id);
     await course.save();
@@ -26,9 +32,38 @@ export const listDecksForCourse = async (req: AuthRequest, res: Response) => {
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: 'Course not found' });
     if (course.userId.toString() !== req.user!.id) return res.status(403).json({ message: 'Forbidden' });
+
+    // Populate cards for each deck
     const decks = await Deck.find({ courseId }).populate('cards');
-    res.json(decks);
-  } catch (err) { res.status(500).json({ message: (err as Error).message }); }
+
+    const now = new Date();
+
+    const decksWithCounts = decks.map(deck => {
+      const cardsRaw = deck.cards;
+      const cards: ICard[] = Array.isArray(deck.cards) && deck.cards.length > 0 && typeof deck.cards[0] === 'object' && 'front' in deck.cards[0]
+        ? (deck.cards as unknown as ICard[])
+        : [];
+      const cardCount = cards.length;
+      const newCards = cards.filter(card => card.repetition === 0).length;
+      const dueCards = cards.filter(card => {
+        if (!card.lastReviewed) return true;
+        const nextReviewDate = new Date(card.lastReviewed);
+        nextReviewDate.setDate(nextReviewDate.getDate() + card.interval);
+        return nextReviewDate <= now;
+      }).length;
+
+      return {
+        ...deck.toObject(),
+        cardCount,
+        newCards,
+        dueCards,
+      };
+    });
+
+    res.json(decksWithCounts);
+  } catch (err) {
+    res.status(500).json({ message: (err as Error).message });
+  }
 };
 
 export const getDeck = async (req: AuthRequest, res: Response) => {

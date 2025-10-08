@@ -17,6 +17,8 @@ import HomeScreen from "./src/screens/Home";
 import CalendarScreen from "./src/screens/Calendar";
 import CourseScreen from "./src/screens/Course";
 import CourseDetailsScreen from "./src/screens/CourseDetails";
+import DeckCardsScreen from "./src/screens/DeckCards";
+import StudyScreen from "./src/screens/Study";
 import FocusScreen from "./src/screens/Focus";
 import AnalyticsScreen from "./src/screens/Analytics";
 
@@ -142,14 +144,14 @@ export default function App() {
       const refreshToken = await SecureStore.getItemAsync('refreshToken');
       if (!refreshToken) return;
       try {
-        const res = await fetch('http://172.28.0.1:5000/api/auth/refresh', {
+        const res = await fetch('http://192.168.128.1:5000/api/auth/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken }),
         });
         if (res.ok) {
           const data = await res.json();
-          await SecureStore.setItemAsync('accessToken', data.accessToken); // <-- Add this!
+          await SecureStore.setItemAsync('accessToken', data.accessToken);
           await SecureStore.setItemAsync('refreshToken', data.refreshToken);
           setAccessToken(data.accessToken);
           setIsLoggedIn(true);
@@ -165,31 +167,31 @@ export default function App() {
     return null;
   }
 
-  if (!isLoggedIn) {
-    if (showSignup) {
-      return (
-        <SignupPage
-          onNavigateToLogin={() => setShowSignup(false)}
-          onSignUpSuccess={async (data) => {
-            await SecureStore.setItemAsync('refreshToken', data.refreshToken);
-            setAccessToken(data.accessToken);
-            setIsLoggedIn(true);
-            setShowSignup(false);
-          }}
-        />
-      );
-    }
-    return (
-      <LoginPage
-        onLoginSuccess={async (data) => {
-          await SecureStore.setItemAsync('refreshToken', data.refreshToken);
-          setAccessToken(data.accessToken);
-          setIsLoggedIn(true);
-        }}
-        onNavigateToSignup={() => setShowSignup(true)}
-      />
-    );
-  }
+  // if (!isLoggedIn) {
+  //   if (showSignup) {
+  //     return (
+  //       <SignupPage
+  //         onNavigateToLogin={() => setShowSignup(false)}
+  //         onSignUpSuccess={async (data) => {
+  //           await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+  //           setAccessToken(data.accessToken);
+  //           setIsLoggedIn(true);
+  //           setShowSignup(false);
+  //         }}
+  //       />
+  //     );
+  //   }
+  //   return (
+  //     <LoginPage
+  //       onLoginSuccess={async (data) => {
+  //         await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+  //         setAccessToken(data.accessToken);
+  //         setIsLoggedIn(true);
+  //       }}
+  //       onNavigateToSignup={() => setShowSignup(true)}
+  //     />
+  //   );
+  // }
 
   return (
     <NavigationContainer onReady={onLayoutRootView}>
@@ -206,6 +208,17 @@ export default function App() {
           component={CourseDetailsScreen}
           options={{ headerShown: false}}
         />
+        <Stack.Screen
+          name="DeckCards"
+          component={DeckCardsScreen}
+          options={{headerShown: false}}
+          />
+
+        <Stack.Screen
+          name="Study"
+          component={StudyScreen}
+          options={{headerShown: false}}
+          />
       </Stack.Navigator>
     </NavigationContainer>
   );

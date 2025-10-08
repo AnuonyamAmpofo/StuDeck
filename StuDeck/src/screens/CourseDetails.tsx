@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@env';
 import {
   View,
   Text,
@@ -14,16 +15,19 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as SecureStore from 'expo-secure-store';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Deck {
   _id: string;
-  name: string;
-  description?: string;
-  cardCount: number;
-  newCards: number;
-  dueCards: number;
+  title: string;
   courseId: string;
+  description?: string;
+  cards: string[];
   createdAt: string;
+  createdBy: string;
+  cardCount?: number;
+  dueCards?: number;
+  newCards?: number;
 }
 
 interface CourseDetailsScreenProps {
@@ -32,46 +36,70 @@ interface CourseDetailsScreenProps {
 }
 
 const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, navigation }) => {
-  const { courseId, courseName } = route?.params || {};
-  
-  const [decks, setDecks] = useState<Deck[]>([]);
+  const { courseId, courseName, decks: passedDecks } = route?.params || {};
+  const [decks, setDecks] = useState<Deck[]>(passedDecks ?? []);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [newDeckName, setNewDeckName] = useState('');
   const [newDeckDescription, setNewDeckDescription] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [addCardModalVisible, setAddCardModalVisible] = useState(false);
+  const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
 
-  const API_BASE_URL = 'http://172.28.0.1:5000/api';
+  // const API_BASE_URL = 'http://172.19.192.1:5000/api';
 
-  useEffect(() => {
-    if (courseId) {
-      fetchDecks();
-    }
-  }, [courseId]);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (courseId) {
+        fetchDecks();
+      }
+    }, [courseId])
+  );
 
-  // --- REFRESH TOKEN LOGIC FOR FETCHING DECKS ---
+  
   const fetchDecks = async () => {
     try {
-      setLoading(true);
+      setSyncing(true);
       let accessToken = await SecureStore.getItemAsync('accessToken');
       let triedRefresh = false;
 
       const getDecks = async (token: string | null): Promise<Deck[]> => {
-        if (!token) return [];
+        if (!token) {
+          console.log('No access token found');
+          return [];
+        }
         try {
-          const response = await fetch(`${API_BASE_URL}/courses/${courseId}/decks`, {
+          // console.log('Fetching decks with token:', token);
+          // console.log('Request URL:', `${API_BASE_URL}/decks/courses/${courseId}/decks`);
+          const response = await fetch(`${API_BASE_URL}/decks/courses/${courseId}/decks`, {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
           });
 
+          // console.log('Response status:', response.status);
+          const text = await response.text();
+          // console.log('Raw response text:', text);
+
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            console.log('Failed to parse JSON:', e);
+            data = null;
+          }
+
           if (response.ok) {
-            const data = await response.json();
-            return Array.isArray(data) ? data : data.decks || [];
+            // console.log('Parsed data:', data);
+            return Array.isArray(data) ? data : data?.decks || [];
           } else if (response.status === 401 && !triedRefresh) {
             // Try to refresh token
             triedRefresh = true;
             const refreshToken = await SecureStore.getItemAsync('refreshToken');
-            if (!refreshToken) return [];
+            if (!refreshToken) {
+              console.log('No refresh token found');
+              return [];
+            }
             const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -81,24 +109,29 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
               const refreshData = await refreshRes.json();
               await SecureStore.setItemAsync('accessToken', refreshData.accessToken);
               await SecureStore.setItemAsync('refreshToken', refreshData.refreshToken);
+              // console.log('Token refreshed, retrying fetchDecks...');
               return await getDecks(refreshData.accessToken);
             } else {
+              console.log('Failed to refresh token');
               return [];
             }
           } else {
+            console.log('Non-OK response:', response.status, data);
             return [];
           }
         } catch (error) {
+          console.log('Error in getDecks:', error);
           return [];
         }
       };
 
       const data = await getDecks(accessToken);
+      // console.log('Final decks data:', data);
       setDecks(data);
     } catch (error) {
       console.error('Error fetching decks:', error);
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   };
 
@@ -115,14 +148,14 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
     const createDeck = async (token: string | null): Promise<boolean> => {
       if (!token) return false;
       try {
-        const response = await fetch(`${API_BASE_URL}/courses/${courseId}/decks`, {
+        const response = await fetch(`${API_BASE_URL}/decks/courses/${courseId}/decks`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
-            name: newDeckName.trim(),
+            title: newDeckName.trim(),
             description: newDeckDescription.trim(),
           }),
         });
@@ -148,11 +181,19 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
             return false;
           }
         } else {
-          const data = await response.json();
+          const text = await response.text();
+          console.log('Deck creation error response:', text); 
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            data = { message: text };
+          }
           Alert.alert('Error', data.message || 'Failed to create deck');
           return false;
         }
       } catch (error) {
+        console.log('Deck creation exception:', error); 
         Alert.alert('Error', 'Failed to create deck');
         return false;
       }
@@ -161,7 +202,7 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
     try {
       const success = await createDeck(accessToken);
       if (success) {
-        Alert.alert('Success', 'Deck created successfully!');
+        // Alert.alert('Success', 'Deck created successfully!');
         setNewDeckName('');
         setNewDeckDescription('');
         setModalVisible(false);
@@ -174,14 +215,16 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
   };
 
   const handleStudyAll = () => {
-    const totalDue = decks.reduce((sum, deck) => sum + deck.dueCards, 0);
+    const totalDue = decks.reduce((sum, deck) => sum + (deck.dueCards ?? 0), 0);
     if (totalDue === 0) {
       Alert.alert('No Cards Due', 'You have no cards to study at the moment!');
       return;
     }
-    
+
     if (navigation) {
-      navigation.navigate('Study', { courseId, deckId: null });
+      // Pass all deck IDs as an array
+      const allDeckIds = decks.map(deck => deck._id);
+      navigation.navigate('Study', { courseId, deckIds: allDeckIds });
     }
   };
 
@@ -190,20 +233,23 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
       Alert.alert('Empty Deck', 'This deck has no cards yet. Add some cards first!');
       return;
     }
-    
+
     if (navigation) {
-      navigation.navigate('Study', { courseId, deckId: deck._id, deckName: deck.name });
+      // Pass only this deck's ID as an array
+      navigation.navigate('Study', { courseId, deckIds: [deck._id], deckName: deck.title });
     }
   };
 
   const navigateToDeckCards = (deck: Deck) => {
+    // console.log('Navigating to DeckCards:', deck._id, deck.title, courseId);
     if (navigation) {
-      navigation.navigate('DeckCards', { deckId: deck._id, deckName: deck.name, courseId });
+      navigation.push('DeckCards', { deckId: deck._id, deckName: deck.title, courseId });
     }
   };
 
   const renderDeckCard = (deck: Deck) => {
-    const hasCardsToStudy = deck.dueCards > 0 || deck.newCards > 0;
+    const cardCount = deck.cardCount ?? deck.cards?.length ?? 0;
+    const hasCardsToStudy = cardCount > 0;
 
     return (
       <View key={deck._id} style={styles.deckCard}>
@@ -215,15 +261,12 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
           <View style={styles.deckHeader}>
             <View style={styles.deckTitleSection}>
               <Icon name="style" size={24} color="#667eea" />
-              <Text style={styles.deckName}>{deck.name}</Text>
+              <Text style={styles.deckName}>{deck.title}</Text>
             </View>
             <TouchableOpacity
-              style={[
-                styles.studyButton,
-                !hasCardsToStudy && styles.studyButtonDisabled
-              ]}
+              style={[styles.studyButton, cardCount === 0 && styles.studyButtonDisabled]}
               onPress={() => handleStudyDeck(deck)}
-              disabled={!hasCardsToStudy}
+              disabled={cardCount === 0}
             >
               <Icon name="play-arrow" size={18} color="white" />
               <Text style={styles.studyButtonText}>Study</Text>
@@ -238,26 +281,38 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
 
           <View style={styles.deckStats}>
             <View style={styles.statBadge}>
-              <Text style={styles.statValue}>{deck.cardCount}</Text>
+              <Text style={styles.statValue}>{cardCount}</Text>
               <Text style={styles.statLabel}>Total</Text>
             </View>
             <View style={[styles.statBadge, styles.statBadgeNew]}>
-              <Text style={[styles.statValue, styles.statValueNew]}>{deck.newCards}</Text>
+              <Text style={[styles.statValue, styles.statValueNew]}>{deck.newCards ?? 0}</Text>
               <Text style={styles.statLabel}>New</Text>
             </View>
             <View style={[styles.statBadge, styles.statBadgeDue]}>
-              <Text style={[styles.statValue, styles.statValueDue]}>{deck.dueCards}</Text>
+              <Text style={[styles.statValue, styles.statValueDue]}>{deck.dueCards ?? 0}</Text>
               <Text style={styles.statLabel}>Due</Text>
             </View>
           </View>
+        </TouchableOpacity>
+
+        {/* Add Card Button - New Feature */}
+        <TouchableOpacity
+          style={styles.addCardButton}
+          onPress={() => {
+            setSelectedDeck(deck); // Track which deck to add to
+            setAddCardModalVisible(true); // Show modal instantly
+          }}
+        >
+          <Icon name="note-add" size={20} color="#0089EB" />
+          <Text style={styles.addCardButtonText}>Add Card</Text>
         </TouchableOpacity>
       </View>
     );
   };
 
-  const totalCards = decks.reduce((sum, deck) => sum + deck.cardCount, 0);
-  const totalDue = decks.reduce((sum, deck) => sum + deck.dueCards, 0);
-  const totalNew = decks.reduce((sum, deck) => sum + deck.newCards, 0);
+  const totalCards = decks.reduce((sum, deck) => sum + (deck.cardCount ?? deck.cards?.length ?? 0), 0);
+  const totalDue = decks.reduce((sum, deck) => sum + (deck.dueCards ?? 0), 0);
+  const totalNew = decks.reduce((sum, deck) => sum + (deck.newCards ?? 0), 0);
 
   return (
     <View style={styles.container}>
@@ -277,6 +332,10 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
           <Text style={styles.headerSubtitle}>{decks.length} decks • {totalCards} cards</Text>
         </View>
 
+        {syncing && (
+          <ActivityIndicator size="small" color="#0089EB" style={{ marginRight: 12 }} />
+        )}
+
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => setModalVisible(true)}
@@ -291,7 +350,7 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
           <TouchableOpacity
             style={styles.studyAllButton}
             onPress={handleStudyAll}
-            disabled={totalDue === 0}
+            disabled={totalCards === 0}
             activeOpacity={0.8}
           >
             <LinearGradient
@@ -314,7 +373,7 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
       )}
 
       {/* Decks List */}
-      {loading ? (
+      {loading && decks.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#667eea" />
         </View>
@@ -388,6 +447,48 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
                 onPress={handleCreateDeck}
               >
                 <Text style={styles.createButtonText}>Create Deck</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Card Modal - New Feature (Skeleton) */}
+      <Modal
+        visible={addCardModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setAddCardModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add New Card</Text>
+              <TouchableOpacity onPress={() => setAddCardModalVisible(false)}>
+                <Icon name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              {/* Content for adding a new card will go here */}
+              <Text>Form to add a new card for the deck: {selectedDeck?.title}</Text>
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setAddCardModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.createButton}
+                onPress={() => {
+                  // Logic to add card will go here
+                  setAddCardModalVisible(false);
+                }}
+              >
+                <Text style={styles.createButtonText}>Add Card</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -716,6 +817,26 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_700Bold',
     color: '#fff',
     letterSpacing: 0.5,
+  },
+  addCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e0f7fa',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    marginTop: 12,
+    elevation: 2,
+    shadowColor: '#0089EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  addCardButtonText: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#0089EB',
+    marginLeft: 8,
   },
 });
 

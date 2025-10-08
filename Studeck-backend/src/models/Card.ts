@@ -9,10 +9,10 @@ export interface ICard extends Document {
   createdAt: Date;
 
   // spaced repetition fields
-  repetition: number;       // number of successful reviews
-  interval: number;         // current interval in days
-  easeFactor: number;       // growth multiplier (default 2.5)
-  lastReviewed?: Date;      // last review timestamp
+  repetition: number;       
+  interval: number;         
+  easeFactor: number;       
+  lastReviewed?: Date;      
   reviewHistory: {
     reviewedAt: Date;
     rating: number;

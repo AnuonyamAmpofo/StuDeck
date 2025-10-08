@@ -15,6 +15,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Calendar } from 'react-native-calendars';
 import AddTaskModal from '../components/AddTaskModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '@env';
 
 interface Task {
   _id: string;
@@ -56,7 +57,7 @@ const CalendarScreen: React.FC<TasksCalendarScreenProps> = ({ navigation }) => {
 
   const priorities: Array<'all' | 'low' | 'medium' | 'high'> = ['all', 'low', 'medium', 'high'];
 
-  const API_BASE_URL = 'http://172.28.0.1:5000/api';
+  // const API_BASE_URL = 'http://192.168.128.1:5000/api';
   const TASKS_CACHE_KEY = 'tasks_cache';
 
   useEffect(() => {

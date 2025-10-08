@@ -7,6 +7,7 @@ import { jwtDecode } from "jwt-decode";
 import * as SecureStore from "expo-secure-store";
 import type { Task } from "../components/TasksCard";
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { API_BASE_URL } from '@env';
 
 type HomeScreenProps = BottomTabScreenProps<any, 'Home'> & {
   onLogout: () => void;
@@ -27,7 +28,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
       const getUsername = async (token: string | null) => {
         if (!token) return false;
         try {
-          const res = await fetch("http://172.28.0.1:5000/api/users/me", {
+          const res = await fetch(`${API_BASE_URL}/users/me`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -47,7 +48,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
               return false;
             }
             // Get new access token
-            const refreshRes = await fetch("http://172.28.0.1:5000/api/auth/refresh", {
+            const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ refreshToken }),
@@ -93,7 +94,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
   }, []);
 
   const handleTaskCreated = () => {
-    setRefreshTasksFlag(flag => !flag); // Toggle to trigger refresh
+    setRefreshTasksFlag(flag => !flag);
   };
 
   useEffect(() => {
@@ -104,7 +105,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
       const getTasks = async (token: string | null): Promise<Task[]> => {
         if (!token) return [];
         try {
-          const res = await fetch("http://172.28.0.1:5000/api/tasks", {
+          const res = await fetch(`${API_BASE_URL}/tasks`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -116,7 +117,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
             triedRefresh = true;
             const refreshToken = await SecureStore.getItemAsync('refreshToken');
             if (!refreshToken) return [];
-            const refreshRes = await fetch("http://172.28.0.1:5000/api/auth/refresh", {
+            const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ refreshToken }),
@@ -202,7 +203,7 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
           paddingVertical: 20,
           // paddingTop:10,
         }}
-        showsVerticalScrollIndicator={false} // <-- Add this line
+        showsVerticalScrollIndicator={false}
       >
         {/* Urgent Task */}
         <View style={styles.urgentTaskCard}>

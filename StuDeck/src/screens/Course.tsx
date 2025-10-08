@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '@env';
 
 interface Course {
   _id: string;
@@ -38,7 +39,7 @@ const CourseScreen: React.FC<CoursesScreenProps> = ({ navigation }) => {
   const [newCourseDescription, setNewCourseDescription] = useState('');
   const [selectedColor, setSelectedColor] = useState('#4169E1');
 
-  const API_BASE_URL = 'http://172.28.0.1:5000/api';
+  // const API_BASE_URL = 'http://192.168.128.1:5000/api';
 
   const courseColors = [
     '#4169E1', '#FF6B6B', '#32CD32', '#FFD700',
