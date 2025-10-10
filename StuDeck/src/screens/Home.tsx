@@ -7,8 +7,11 @@ import { jwtDecode } from "jwt-decode";
 import * as SecureStore from "expo-secure-store";
 import type { Task } from "../components/TasksCard";
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { API_BASE_URL } from '@env';
+// import { API_BASE_URL } from '@env';
 
+
+
+const API_BASE_URL = 'http://172.17.128.1:5000/api';
 type HomeScreenProps = BottomTabScreenProps<any, 'Home'> & {
   onLogout: () => void;
 };

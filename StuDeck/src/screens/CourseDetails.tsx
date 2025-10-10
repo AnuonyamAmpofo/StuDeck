@@ -46,7 +46,7 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
   const [addCardModalVisible, setAddCardModalVisible] = useState(false);
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
 
-  // const API_BASE_URL = 'http://172.19.192.1:5000/api';
+  const API_BASE_URL = 'http://172.17.128.1:5000/api';
 
   useFocusEffect(
     React.useCallback(() => {
@@ -241,9 +241,13 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
   };
 
   const navigateToDeckCards = (deck: Deck) => {
-    // console.log('Navigating to DeckCards:', deck._id, deck.title, courseId);
     if (navigation) {
-      navigation.push('DeckCards', { deckId: deck._id, deckName: deck.title, courseId });
+      navigation.push('DeckCards', {
+        deckId: deck._id,
+        deckName: deck.title,
+        courseId,
+        cards: deck.cards, // Pass cards if available
+      });
     }
   };
 
@@ -296,7 +300,7 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
         </TouchableOpacity>
 
         {/* Add Card Button - New Feature */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.addCardButton}
           onPress={() => {
             setSelectedDeck(deck); // Track which deck to add to
@@ -305,7 +309,7 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
         >
           <Icon name="note-add" size={20} color="#0089EB" />
           <Text style={styles.addCardButtonText}>Add Card</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     );
   };

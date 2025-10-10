@@ -21,6 +21,13 @@ export interface ICard extends Document {
   }[];
 }
 
+const reviewHistorySchema = new Schema({
+  reviewedAt: { type: Date, required: true },
+  rating: { type: Number, required: true },
+  interval: { type: Number, required: true },
+  easeFactor: { type: Number, required: true },
+}, { _id: false });
+
 const cardSchema = new Schema<ICard>({
   front: { type: String, required: true },
   back: { type: String, required: true },
@@ -32,14 +39,7 @@ const cardSchema = new Schema<ICard>({
   interval: { type: Number, default: 1 },
   easeFactor: { type: Number, default: 2.5 },
   lastReviewed: { type: Date },
-  reviewHistory: [
-    {
-      reviewedAt: { type: Date, required: true },
-      rating: { type: Number, required: true },
-      interval: { type: Number, required: true },
-      easeFactor: { type: Number, required: true },
-    },
-  ],
+  reviewHistory: [reviewHistorySchema],
 });
 
 export default mongoose.model<ICard>("Card", cardSchema);

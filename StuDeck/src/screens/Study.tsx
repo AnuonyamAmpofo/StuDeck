@@ -52,7 +52,7 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
   const [showRating, setShowRating] = useState(false);
 
   const flipAnimation = React.useRef(new Animated.Value(0)).current;
-//   const API_BASE_URL = 'http://192.168.128.1:5000/api';
+  const API_BASE_URL = 'http://172.17.128.1:5000/api';
 
   useEffect(() => {
     if (deckId) {
@@ -94,28 +94,14 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
       const allCards = await getCards(accessToken);
       setCards(allCards);
 
-      // Filter cards that are due or new
-      const dueCards = allCards.filter(card => {
-        if (card.repetition === 0) return true; // New cards
-        if (card.lastReviewed) {
-          const lastReview = new Date(card.lastReviewed);
-          const nextReview = new Date(lastReview.getTime() + card.interval * 24 * 60 * 60 * 1000);
-          return nextReview <= new Date();
-        }
-        return false;
-      });
+      // Shuffle all cards for the study queue
+      const shuffledQueue = shuffleArray([...allCards]);
+      setStudyQueue(shuffledQueue);
 
-      // Shuffle and prioritize: new cards first, then due cards
-      const newCards = dueCards.filter(c => c.repetition === 0);
-      const reviewCards = dueCards.filter(c => c.repetition > 0);
-      const shuffledNew = shuffleArray([...newCards]);
-      const shuffledReview = shuffleArray([...reviewCards]);
-      
-      const queue = [...shuffledReview, ...shuffledNew];
-      setStudyQueue(queue);
-      
-      if (queue.length > 0) {
-        setCurrentCard(queue[0]);
+      if (shuffledQueue.length > 0) {
+        setCurrentCard(shuffledQueue[0]);
+      } else {
+        setCurrentCard(null);
       }
     } catch (error) {
       console.error('Error fetching cards:', error);
@@ -153,7 +139,7 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
       useNativeDriver: true,
     }).start(() => {
       setIsFlipped(false);
-      setShowRating(false); // Hide difficulty options after animation
+      setShowRating(false);
     });
   };
 
@@ -187,47 +173,35 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
   const handleRating = async (rating: number) => {
     if (!currentCard) return;
 
-    // Calculate next review values using SM-2 algorithm
-    const { easeFactor, interval, repetition } = calculateNextReview(currentCard, rating);
+    await updateCardProgress(currentCard._id, rating);
 
-    // Save progress to backend if needed
-    await updateCardProgress(currentCard._id, easeFactor, interval, repetition);
-
-    // Remove the current card from the front of the queue
     let nextQueue = studyQueue.slice(1);
+    let minPos = nextQueue.length, maxPos = nextQueue.length;
+    if (rating === 1) { minPos = 1; maxPos = 2; }
+    else if (rating === 2) { minPos = 2; maxPos = 4; }
+    else if (rating === 3) { minPos = 5; maxPos = 8; }
+    else if (rating === 4) { minPos = 10; maxPos = 15; }
 
-    // Requeue logic based on difficulty
-    let insertPos = nextQueue.length; // Default: end
-    if (rating === 1) { // Again
-      insertPos = 1; // Show again after 1 card
-    } else if (rating === 2) { // Hard
-      insertPos = Math.min(2, nextQueue.length);
-    } else if (rating === 3) { // Good
-      insertPos = Math.min(5, nextQueue.length);
-    } else if (rating === 4) { // Easy
-      insertPos = Math.min(10, nextQueue.length);
-    }
+    const insertPos = Math.min(
+      minPos + Math.floor(Math.random() * (maxPos - minPos + 1)),
+      nextQueue.length
+    );
 
     nextQueue = [
       ...nextQueue.slice(0, insertPos),
       currentCard,
       ...nextQueue.slice(insertPos),
-    ];
-
-    // Move to next card immediately
-    setShowRating(false);
-    setIsFlipped(false);
-    flipAnimation.setValue(0);
+    ].filter((c): c is Card => c !== null);
 
     setStudyQueue(nextQueue);
-    setCurrentCard(nextQueue[0]);
-  };
+    setCurrentCard(nextQueue[0] ?? null);
 
+    // Reset flip state for next card
+    resetFlip();
+  };
   const updateCardProgress = async (
     cardId: string,
-    easeFactor: number,
-    interval: number,
-    repetition: number
+    rating: number
   ) => {
     let accessToken = await SecureStore.getItemAsync('accessToken');
     let triedRefresh = false;
@@ -235,35 +209,27 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
     const updateCard = async (token: string | null): Promise<boolean> => {
       if (!token) return false;
       try {
-        const response = await fetch(`${API_BASE_URL}/cards/${cardId}/progress`, {
-          method: 'PUT',
+        const response = await fetch(`${API_BASE_URL}/study/review`, {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
-            easeFactor,
-            interval,
-            repetition,
-            lastReviewed: new Date(),
+            reviews: [{
+              cardId,
+              rating: rating - 1 // Map your rating (1-4) to backend (0-3)
+            }]
           }),
         });
 
-        if (response.ok) {
-          return true;
-        } else if (response.status === 401 && !triedRefresh) {
-          triedRefresh = true;
-          const newToken = await refreshAccessToken();
-          if (!newToken) return false;
-          return await updateCard(newToken);
-        }
-        return false;
-      } catch (error) {
-        return false;
-      }
-    };
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  };
 
-    await updateCard(accessToken);
+  await updateCard(accessToken);
   };
 
   const showCompletionScreen = () => {
@@ -310,6 +276,15 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
     outputRange: ['180deg', '360deg'],
   });
 
+  const getCardStatus = (card: Card) => {
+    const now = new Date();
+    if (!card.lastReviewed) return { text: 'New', color: '#1d4ed8' };
+    const lastReviewDate = new Date(card.lastReviewed);
+    const nextReviewDate = new Date(lastReviewDate.getTime() + card.interval * 24 * 60 * 60 * 1000);
+    if (nextReviewDate <= now) return { text: 'To Review', color: '#d97706' };
+    return { text: 'Learning', color: '#059669' };
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -354,9 +329,9 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
           </Text> */}
         </View>
 
-        <View style={styles.statsButton}>
+        {/* <View style={styles.statsButton}>
           <Icon name="bar-chart" size={24} color="#fff" />
-        </View>
+        </View> */}
       </LinearGradient>
 
       {/* Progress Bar */}

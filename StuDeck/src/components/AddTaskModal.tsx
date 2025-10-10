@@ -51,7 +51,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [categories, setCategories] = useState<string[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
-  const API_BASE_URL = 'http://192.168.128.1:5000/api';
+  const API_BASE_URL = 'http://172.17.128.1:5000/api';
 
   const defaultCategories = [
     'Uni Assignment',

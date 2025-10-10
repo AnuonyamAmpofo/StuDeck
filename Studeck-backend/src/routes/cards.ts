@@ -8,6 +8,6 @@ const router = Router();
 router.post('/decks/:deckId/cards', auth, createCard);
 router.get('/decks/:deckId/cards', auth, listCardsInDeck);
 router.get('/:id', auth, getCard);
-router.patch('/:id', auth, updateCard);
+router.put('/:id', auth, updateCard);
 router.delete('/:id', auth, deleteCard);
 export default router;

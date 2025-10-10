@@ -12,7 +12,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as SecureStore from 'expo-secure-store';
 import {jwtDecode} from "jwt-decode";
 import AddTaskModal from "../components/AddTaskModal";
-import { API_BASE_URL } from '@env';
+// import { API_BASE_URL } from '@env';
 
 // Type definitions
 interface Task {
@@ -147,7 +147,7 @@ const TaskGrid: React.FC<TaskGridProps> = ({
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // const API_BASE_URL = 'http://192.168.128.1:5000/api';
+  const API_BASE_URL = 'http://172.17.128.1:5000/api';
 
   // Fetch tasks from backend
   const fetchTasksWithAuth = async (): Promise<Task[]> => {

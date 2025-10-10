@@ -9,7 +9,7 @@ import * as SplashScreen from "expo-splash-screen";
 import * as SecureStore from "expo-secure-store";
 import { useFonts as useMontserrat, Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold, Montserrat_800ExtraBold, Montserrat_900Black } from '@expo-google-fonts/montserrat';
 import { useFonts as usePoppins, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold, Poppins_900Black } from '@expo-google-fonts/poppins';
-
+// import { API_BASE_URL } from "@env";
 // Screens
 import LoginPage from "./src/screens/Login";
 import SignupPage from "./src/screens/SignUp";
@@ -31,6 +31,7 @@ interface MainTabsProps {
   setAccessToken: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
+const API_BASE_URL = 'http://172.17.128.1:5000/api';
 function MainTabs({ setIsLoggedIn, setAccessToken }: MainTabsProps) {
   return (
     <Tab.Navigator
@@ -144,7 +145,7 @@ export default function App() {
       const refreshToken = await SecureStore.getItemAsync('refreshToken');
       if (!refreshToken) return;
       try {
-        const res = await fetch('http://192.168.128.1:5000/api/auth/refresh', {
+        const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken }),

@@ -39,14 +39,18 @@ export const listDecksForCourse = async (req: AuthRequest, res: Response) => {
     const now = new Date();
 
     const decksWithCounts = decks.map(deck => {
-      const cardsRaw = deck.cards;
       const cards: ICard[] = Array.isArray(deck.cards) && deck.cards.length > 0 && typeof deck.cards[0] === 'object' && 'front' in deck.cards[0]
         ? (deck.cards as unknown as ICard[])
         : [];
       const cardCount = cards.length;
-      const newCards = cards.filter(card => card.repetition === 0).length;
+
+      // Only cards never reviewed are "New"
+      const newCards = cards.filter(card => !card.lastReviewed).length;
+
+      // "Due" cards: interval === 1 OR nextReviewDate <= now
       const dueCards = cards.filter(card => {
-        if (!card.lastReviewed) return true;
+        if (card.interval === 1) return true;
+        if (!card.lastReviewed) return false;
         const nextReviewDate = new Date(card.lastReviewed);
         nextReviewDate.setDate(nextReviewDate.getDate() + card.interval);
         return nextReviewDate <= now;

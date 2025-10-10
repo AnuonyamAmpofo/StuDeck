@@ -62,6 +62,7 @@ export const fetchDueCards = async (req: AuthRequest, res: Response) => {
 };
 
 export const reviewCards = async (req: AuthRequest, res: Response) => {
+  console.log('reviewCards called, req.body:', req.body);
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
@@ -74,32 +75,51 @@ export const reviewCards = async (req: AuthRequest, res: Response) => {
 
     const results: any[] = [];
     for (const r of reviews) {
-      const card = await Card.findById(r.cardId).session(session);
+      const card = await Card.findById(r.cardId);
       if (!card) continue;
 
-      const deck = await Deck.findById(card.deckId).session(session);
-      if (!deck) throw new Error('Deck not found');
-      const course = await Course.findById(deck.courseId).session(session);
-      if (!course) throw new Error('Course not found');
-      if (course.userId.toString() !== req.user!.id) throw new Error('Forbidden');
+      let { repetition, interval, easeFactor } = card;
 
-      const curState = { repetition: card.repetition || 0, interval: card.interval || 1, easeFactor: card.easeFactor || 2.5 };
-      const reviewed = reviewCard(curState, r.rating);
+      if (r.rating === 0) { // Again
+        repetition = 0;
+        interval = 1;
+      } else if (r.rating === 1) { // Hard
+        // DO NOT reset repetition!
+        interval = Math.max(1, Math.round(interval * 1.2));
+        easeFactor = Math.max(1.3, easeFactor - 0.15);
+        // repetition stays the same
+      } else if (r.rating === 2 || r.rating === 3) { // Good or Easy
+        if (repetition === 0) {
+          interval = 1;
+        } else if (repetition === 1) {
+          interval = 6;
+        } else {
+          interval = Math.round(interval * easeFactor);
+        }
+        repetition += 1;
+        easeFactor = easeFactor + (0.1 - (5 - (r.rating + 2)) * (0.08 + (5 - (r.rating + 2)) * 0.02));
+        if (easeFactor < 1.3) easeFactor = 1.3;
+      }
 
-      card.repetition = reviewed.repetition;
-      card.interval = reviewed.interval;
-      card.easeFactor = reviewed.easeFactor;
+      card.repetition = repetition;
+      card.interval = interval;
+      card.easeFactor = easeFactor;
       card.lastReviewed = new Date();
-      card.reviewHistory = card.reviewHistory || [];
       card.reviewHistory.push({
         reviewedAt: card.lastReviewed,
         rating: r.rating,
-        interval: reviewed.interval,
-        easeFactor: reviewed.easeFactor
+        interval,
+        easeFactor
       });
-
-      await card.save({ session });
-      results.push({ cardId: card._id, repetition: card.repetition, interval: card.interval, easeFactor: card.easeFactor });
+      await card.save();
+      results.push({
+        cardId: card._id,
+        repetition,
+        interval,
+        easeFactor,
+        lastReviewed: card.lastReviewed,
+        reviewHistory: card.reviewHistory
+      });
     }
 
     await session.commitTransaction();
@@ -108,6 +128,16 @@ export const reviewCards = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
+    res.status(500).json({ message: (err as Error).message });
+  }
+};
+
+export const fetchAllCardsForDeck = async (req: AuthRequest, res: Response) => {
+  try {
+    const { deckId } = req.params;
+    const cards = await Card.find({ deckId });
+    res.json(cards);
+  } catch (err) {
     res.status(500).json({ message: (err as Error).message });
   }
 };

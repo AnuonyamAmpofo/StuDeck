@@ -33,9 +33,8 @@ interface DeckCardsScreenProps {
 }
 
 const DeckCardsScreen: React.FC<DeckCardsScreenProps> = ({ route, navigation }) => {
-  const { deckId, deckName, courseId } = route?.params || {};
-  
-  const [cards, setCards] = useState<Card[]>([]);
+const { deckId, deckName, courseId, cards: passedCards } = route?.params || {};
+const [cards, setCards] = useState<Card[]>(passedCards ?? []);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -46,10 +45,13 @@ const DeckCardsScreen: React.FC<DeckCardsScreenProps> = ({ route, navigation }) 
   const [viewMode, setViewMode] = useState<'list' | 'browse'>('list');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
-  // const API_BASE_URL = 'http://192.168.128.1:5000/api';
+  const API_BASE_URL = 'http://172.17.128.1:5000/api';
 
   useEffect(() => {
     if (deckId) {
+      if (!passedCards || passedCards.length === 0) {
+        setLoading(true);
+      }
       fetchCards();
     }
   }, [deckId]);
@@ -76,7 +78,7 @@ const DeckCardsScreen: React.FC<DeckCardsScreenProps> = ({ route, navigation }) 
             triedRefresh = true;
             const newToken = await refreshAccessToken();
             if (!newToken) return [];
-            return await getCards(newToken);
+            return await getCards(newToken); 
           } else {
             return [];
           }
@@ -196,7 +198,7 @@ const DeckCardsScreen: React.FC<DeckCardsScreenProps> = ({ route, navigation }) 
     try {
       const success = await editCard(accessToken);
       if (success) {
-        Alert.alert('Success', 'Card updated successfully!');
+        // Alert.alert('Success', 'Card updated successfully!');
         setFrontText('');
         setBackText('');
         setSelectedCard(null);
@@ -285,36 +287,42 @@ const DeckCardsScreen: React.FC<DeckCardsScreenProps> = ({ route, navigation }) 
   };
 
   const getCardStatus = (card: Card) => {
-    if (card.repetition === 0) {
+    const now = new Date();
+
+    // Never reviewed
+    if (!card.lastReviewed) {
       return { text: 'New', color: '#1d4ed8' };
     }
-    
-    if (card.lastReviewed) {
-      const lastReviewDate = new Date(card.lastReviewed);
-      const nextReviewDate = new Date(lastReviewDate.getTime() + card.interval * 24 * 60 * 60 * 1000);
-      const now = new Date();
-      
-      if (nextReviewDate <= now) {
-        return { text: 'Due', color: '#d97706' };
-      }
+
+    // If interval is 1, show as "To Review"
+    if (card.interval === 1) {
+      return { text: 'To Review', color: '#d97706' };
     }
-    
+
+    // Otherwise, use the spaced repetition logic
+    const lastReviewDate = new Date(card.lastReviewed);
+    const nextReviewDate = new Date(lastReviewDate.getTime() + card.interval * 24 * 60 * 60 * 1000);
+
+    if (nextReviewDate <= now) {
+      return { text: 'To Review', color: '#d97706' };
+    }
+
     return { text: 'Learning', color: '#059669' };
   };
 
   const getDueStats = () => {
     let newCount = 0;
-    let dueCount = 0;
+    let toReviewCount = 0;
     let learningCount = 0;
 
     cards.forEach(card => {
       const status = getCardStatus(card);
       if (status.text === 'New') newCount++;
-      else if (status.text === 'Due') dueCount++;
-      else learningCount++;
+      else if (status.text === 'To Review') toReviewCount++;
+      else if (status.text === 'Learning') learningCount++;
     });
 
-    return { newCount, dueCount, learningCount };
+    return { newCount, toReviewCount, learningCount };
   };
 
   const stats = getDueStats();
@@ -500,7 +508,7 @@ const DeckCardsScreen: React.FC<DeckCardsScreenProps> = ({ route, navigation }) 
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: '#d97706' }]}>{stats.dueCount}</Text>
+            <Text style={[styles.statNumber, { color: '#d97706' }]}>{stats.toReviewCount}</Text>
             <Text style={styles.statLabel}>To Review</Text>
           </View>
           <View style={styles.statDivider} />
@@ -532,7 +540,7 @@ const DeckCardsScreen: React.FC<DeckCardsScreenProps> = ({ route, navigation }) 
       )}
 
       {/* Content */}
-      {loading ? (
+      {loading && cards.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0089EB" />
         </View>
@@ -541,6 +549,9 @@ const DeckCardsScreen: React.FC<DeckCardsScreenProps> = ({ route, navigation }) 
           <Icon name="style" size={64} color="#d1d5db" />
           <Text style={styles.emptyText}>No cards yet</Text>
           <Text style={styles.emptySubtext}>Add your first flashcard to get started</Text>
+          {loading && (
+            <ActivityIndicator size="small" color="#0089EB" style={{ marginTop: 16 }} />
+          )}
         </View>
       ) : viewMode === 'list' ? (
         <ScrollView
