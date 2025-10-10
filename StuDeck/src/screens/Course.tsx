@@ -39,7 +39,7 @@ const CourseScreen: React.FC<CoursesScreenProps> = ({ navigation }) => {
   const [newCourseDescription, setNewCourseDescription] = useState('');
   const [selectedColor, setSelectedColor] = useState('#4169E1');
 
-  const API_BASE_URL = 'http://172.17.128.1:5000/api';
+  const API_BASE_URL = 'http://172.31.144.1:5000/api';
 
   const courseColors = [
     '#4169E1', '#FF6B6B', '#32CD32', '#FFD700',

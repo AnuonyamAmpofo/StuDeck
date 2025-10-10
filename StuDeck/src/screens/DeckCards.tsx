@@ -45,7 +45,7 @@ const [cards, setCards] = useState<Card[]>(passedCards ?? []);
   const [viewMode, setViewMode] = useState<'list' | 'browse'>('list');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
-  const API_BASE_URL = 'http://172.17.128.1:5000/api';
+  const API_BASE_URL = 'http://172.31.144.1:5000/api';
 
   useEffect(() => {
     if (deckId) {

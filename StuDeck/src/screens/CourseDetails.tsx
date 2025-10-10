@@ -46,7 +46,7 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
   const [addCardModalVisible, setAddCardModalVisible] = useState(false);
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
 
-  const API_BASE_URL = 'http://172.17.128.1:5000/api';
+  const API_BASE_URL = 'http://172.31.144.1:5000/api';
 
   useFocusEffect(
     React.useCallback(() => {
@@ -215,14 +215,13 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
   };
 
   const handleStudyAll = () => {
-    const totalDue = decks.reduce((sum, deck) => sum + (deck.dueCards ?? 0), 0);
-    if (totalDue === 0) {
-      Alert.alert('No Cards Due', 'You have no cards to study at the moment!');
+    const totalCards = decks.reduce((sum, deck) => sum + (deck.cardCount ?? deck.cards?.length ?? 0), 0);
+    if (totalCards === 0) {
+      Alert.alert('No Cards', 'There are no cards to study in any deck!');
       return;
     }
 
     if (navigation) {
-      // Pass all deck IDs as an array
       const allDeckIds = decks.map(deck => deck._id);
       navigation.navigate('Study', { courseId, deckIds: allDeckIds });
     }
@@ -318,6 +317,16 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
   const totalDue = decks.reduce((sum, deck) => sum + (deck.dueCards ?? 0), 0);
   const totalNew = decks.reduce((sum, deck) => sum + (deck.newCards ?? 0), 0);
 
+  // Check if any deck has cards
+  const hasCards = decks.some(deck => (deck.cardCount ?? deck.cards?.length ?? 0) > 0);
+  const hasAnyCards = decks.some(deck => Number(deck.cardCount) > 0);
+
+  console.log('decks at top:', decks);
+
+  useEffect(() => {
+    console.log('decks in useEffect:', decks);
+  }, [decks]);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -352,13 +361,13 @@ const CourseDetailsScreen: React.FC<CourseDetailsScreenProps> = ({ route, naviga
       {decks.length > 0 && (
         <View style={styles.studyAllContainer}>
           <TouchableOpacity
-            style={styles.studyAllButton}
+            style={[styles.studyAllButton, !hasAnyCards && styles.disabledButton]}
             onPress={handleStudyAll}
-            disabled={totalCards === 0}
+            disabled={!hasAnyCards}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={totalDue > 0 ? ['#667eea', '#764ba2'] : ['#ccc', '#999']}
+              colors={hasAnyCards ? ['#667eea', '#764ba2'] : ['#ccc', '#999']}
               style={styles.studyAllGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -561,6 +570,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#d1d5db',
   },
   studyAllGradient: {
     flexDirection: 'row',

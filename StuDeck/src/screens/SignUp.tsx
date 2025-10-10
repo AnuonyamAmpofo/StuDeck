@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { API_BASE_URL } from '@env';
+// import { API_BASE_URL } from '@env';
 
 interface SignUpPageProps {
   onSignUpSuccess?: (data: SignUpResponse) => void;
@@ -50,7 +50,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({
     confirmPassword: '',
   });
 
-  // const API_BASE_URL = 'http://172.28.0.1:5000/api';
+  const API_BASE_URL = 'http://172.31.144.1:5000/api';
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

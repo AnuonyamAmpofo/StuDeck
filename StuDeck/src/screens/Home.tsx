@@ -11,17 +11,62 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
 
 
-const API_BASE_URL = 'http://172.17.128.1:5000/api';
+const API_BASE_URL = 'http://172.31.144.1:5000/api';
 type HomeScreenProps = BottomTabScreenProps<any, 'Home'> & {
   onLogout: () => void;
 };
 
-export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
+export default function HomeScreen({ navigation, onLogout, route }: HomeScreenProps & { route?: any }) {
   const [username, setUsername] = useState("...");
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [refreshTasksFlag, setRefreshTasksFlag] = useState(false);
   const [mostUrgentTask, setMostUrgentTask] = useState<Task | null>(null);
+
+  // --- Streak state ---
+  const [streakDays, setStreakDays] = useState(0);
+  const [completedDays, setCompletedDays] = useState<string[]>([]);
+  const [streakLoading, setStreakLoading] = useState(true);
+
+  useEffect(() => {
+    // Listen for navigation param to trigger streak refresh
+    if (route?.params?.refreshStreak) {
+      setRefreshTasksFlag(flag => !flag);
+      navigation.setParams({ refreshStreak: false }); // Clear the param
+    }
+  }, [route?.params?.refreshStreak]);
+  // --- Fetch streak data ---
+  useEffect(() => {
+    const fetchStreak = async () => {
+      setStreakLoading(true);
+      const accessToken = await SecureStore.getItemAsync("accessToken");
+      const userId = await SecureStore.getItemAsync("userId");
+      if (!accessToken || !userId) {
+        setStreakDays(0);
+        setCompletedDays([]);
+        setStreakLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE_URL}/streak/${userId}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStreakDays(data.streakDays);
+          setCompletedDays(data.completedDays);
+        } else {
+          setStreakDays(0);
+          setCompletedDays([]);
+        }
+      } catch {
+        setStreakDays(0);
+        setCompletedDays([]);
+      }
+      setStreakLoading(false);
+    };
+    fetchStreak();
+  }, [refreshTasksFlag]);
 
   useEffect(() => {
     const fetchUsername = async () => {
@@ -230,7 +275,13 @@ export default function HomeScreen({ navigation, onLogout }: HomeScreenProps) {
         </View>
 
         {/* Streak Card */}
-        <Streak streakDays={142} completedDays={["Mon", "Tue", "Wed"]} />
+        {streakLoading ? (
+          <View style={[styles.urgentTaskCard, { alignItems: "center", justifyContent: "center" }]}>
+            <Text style={{ color: "#fff" }}>Loading streak...</Text>
+          </View>
+        ) : (
+          <Streak streakDays={streakDays} completedDays={completedDays} />
+        )}
 
         {/* Tasks Section */}
         <View style={styles.section}>

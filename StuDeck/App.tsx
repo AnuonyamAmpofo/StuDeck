@@ -31,7 +31,7 @@ interface MainTabsProps {
   setAccessToken: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-const API_BASE_URL = 'http://172.17.128.1:5000/api';
+const API_BASE_URL = 'http://172.31.144.1:5000/api';
 function MainTabs({ setIsLoggedIn, setAccessToken }: MainTabsProps) {
   return (
     <Tab.Navigator
@@ -168,31 +168,31 @@ export default function App() {
     return null;
   }
 
-  // if (!isLoggedIn) {
-  //   if (showSignup) {
-  //     return (
-  //       <SignupPage
-  //         onNavigateToLogin={() => setShowSignup(false)}
-  //         onSignUpSuccess={async (data) => {
-  //           await SecureStore.setItemAsync('refreshToken', data.refreshToken);
-  //           setAccessToken(data.accessToken);
-  //           setIsLoggedIn(true);
-  //           setShowSignup(false);
-  //         }}
-  //       />
-  //     );
-  //   }
-  //   return (
-  //     <LoginPage
-  //       onLoginSuccess={async (data) => {
-  //         await SecureStore.setItemAsync('refreshToken', data.refreshToken);
-  //         setAccessToken(data.accessToken);
-  //         setIsLoggedIn(true);
-  //       }}
-  //       onNavigateToSignup={() => setShowSignup(true)}
-  //     />
-  //   );
-  // }
+  if (!isLoggedIn) {
+    if (showSignup) {
+      return (
+        <SignupPage
+          onNavigateToLogin={() => setShowSignup(false)}
+          onSignUpSuccess={async (data) => {
+            await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+            setAccessToken(data.accessToken);
+            setIsLoggedIn(true);
+            setShowSignup(false);
+          }}
+        />
+      );
+    }
+    return (
+      <LoginPage
+        onLoginSuccess={async (data) => {
+          await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+          setAccessToken(data.accessToken);
+          setIsLoggedIn(true);
+        }}
+        onNavigateToSignup={() => setShowSignup(true)}
+      />
+    );
+  }
 
   return (
     <NavigationContainer onReady={onLayoutRootView}>

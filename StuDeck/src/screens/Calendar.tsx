@@ -57,7 +57,7 @@ const CalendarScreen: React.FC<TasksCalendarScreenProps> = ({ navigation }) => {
 
   const priorities: Array<'all' | 'low' | 'medium' | 'high'> = ['all', 'low', 'medium', 'high'];
 
-  const API_BASE_URL = 'http://172.17.128.1:5000/api';
+  const API_BASE_URL = 'http://172.31.144.1:5000/api';
   const TASKS_CACHE_KEY = 'tasks_cache';
 
   useEffect(() => {

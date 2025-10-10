@@ -52,13 +52,46 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
   const [showRating, setShowRating] = useState(false);
 
   const flipAnimation = React.useRef(new Animated.Value(0)).current;
-  const API_BASE_URL = 'http://172.17.128.1:5000/api';
+  const API_BASE_URL = 'http://172.31.144.1:5000/api';
 
   useEffect(() => {
     if (deckId) {
       fetchCards();
     }
   }, [deckId]);
+
+  useEffect(() => {
+    const fetchAllCards = async () => {
+      setLoading(true);
+      let allCards: Card[] = [];
+      let accessToken = await SecureStore.getItemAsync('accessToken');
+      for (const deckId of route.params.deckIds) {
+        const response = await fetch(`${API_BASE_URL}/cards/decks/${deckId}/cards`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          allCards = allCards.concat(Array.isArray(data) ? data : data.cards || []);
+        }
+      }
+      setCards(allCards);
+
+      // FIX: Initialize study queue and current card
+      const shuffledQueue = shuffleArray([...allCards]);
+      setStudyQueue(shuffledQueue);
+      if (shuffledQueue.length > 0) {
+        setCurrentCard(shuffledQueue[0]);
+      } else {
+        setCurrentCard(null);
+      }
+
+      setLoading(false);
+    };
+
+    if (route.params.deckIds) {
+      fetchAllCards();
+    }
+  }, [route.params.deckIds]);
 
   const fetchCards = async () => {
     try {
@@ -170,10 +203,33 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
     return { easeFactor, interval, repetition };
   };
 
+  const previewNextInterval = (card: Card, rating: number) => {
+    let { easeFactor, interval, repetition } = card;
+
+    if (rating < 3) {
+      // Again or Hard - restart
+      repetition = 0;
+      interval = 1;
+    } else {
+      if (repetition === 0) {
+        interval = 1;
+      } else if (repetition === 1) {
+        interval = 6;
+      } else {
+        interval = Math.round(interval * easeFactor);
+      }
+      repetition += 1;
+      easeFactor = easeFactor + (0.1 - (5 - rating) * (0.08 + (5 - rating) * 0.02));
+      if (easeFactor < 1.3) easeFactor = 1.3;
+    }
+    return interval;
+  };
+
   const handleRating = async (rating: number) => {
     if (!currentCard) return;
 
     await updateCardProgress(currentCard._id, rating);
+    await updateStreakIfNeeded();
 
     let nextQueue = studyQueue.slice(1);
     let minPos = nextQueue.length, maxPos = nextQueue.length;
@@ -198,6 +254,11 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
 
     // Reset flip state for next card
     resetFlip();
+
+    // If no more cards, go to Home and refresh streak
+    if (nextQueue.length === 0) {
+      showCompletionScreen();
+    }
   };
   const updateCardProgress = async (
     cardId: string,
@@ -233,20 +294,8 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
   };
 
   const showCompletionScreen = () => {
-    Alert.alert(
-      '🎉 Study Session Complete!',
-      `Great job! You've studied ${studiedCount} cards.\n\n` +
-      `Again: ${sessionStats.again}\n` +
-      `Hard: ${sessionStats.hard}\n` +
-      `Good: ${sessionStats.good}\n` +
-      `Easy: ${sessionStats.easy}`,
-      [
-        {
-          text: 'Finish',
-          onPress: () => navigation?.goBack(),
-        },
-      ]
-    );
+    // Navigate to Home and trigger streak refresh
+    navigation?.navigate('Home', { refreshStreak: true });
   };
 
   const refreshAccessToken = async () => {
@@ -283,6 +332,34 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
     const nextReviewDate = new Date(lastReviewDate.getTime() + card.interval * 24 * 60 * 60 * 1000);
     if (nextReviewDate <= now) return { text: 'To Review', color: '#d97706' };
     return { text: 'Learning', color: '#059669' };
+  };
+
+  const updateStreakIfNeeded = async () => {
+    let accessToken = await SecureStore.getItemAsync('accessToken');
+    let triedRefresh = false;
+
+    const updateStreak = async (token: string | null): Promise<boolean> => {
+      if (!token) return false;
+      try {
+        const userId = await SecureStore.getItemAsync('userId');
+        const response = await fetch(`${API_BASE_URL}/streak/${userId}/update`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.ok) return true;
+        // If unauthorized, try refresh
+        if (response.status === 401 && !triedRefresh) {
+          triedRefresh = true;
+          const newToken = await refreshAccessToken();
+          return await updateStreak(newToken);
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    };
+
+    await updateStreak(accessToken);
   };
 
   if (loading) {
@@ -432,11 +509,7 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
             >
               <Icon name="check" size={24} color="#fff" />
               <Text style={styles.ratingButtonText}>Good</Text>
-              <Text style={styles.ratingInterval}>
-                {currentCard?.repetition === 0 ? '1 day' : 
-                 currentCard?.repetition === 1 ? '6 days' : 
-                 `${Math.round((currentCard?.interval || 1) * (currentCard?.easeFactor || 2.5))} days`}
-              </Text>
+              <Text style={styles.ratingInterval}>6 days</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -445,10 +518,7 @@ const StudyScreen: React.FC<StudyScreenProps> = ({ route, navigation }) => {
             >
               <Icon name="done-all" size={24} color="#fff" />
               <Text style={styles.ratingButtonText}>Easy</Text>
-              <Text style={styles.ratingInterval}>
-                {currentCard?.repetition === 0 ? '4 days' : 
-                 `${Math.round((currentCard?.interval || 1) * (currentCard?.easeFactor || 2.5) * 1.3)} days`}
-              </Text>
+              <Text style={styles.ratingInterval}>10 days</Text>
             </TouchableOpacity>
           </View>
         </View>

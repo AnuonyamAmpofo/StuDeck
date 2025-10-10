@@ -15,6 +15,7 @@ import focusRoutes from './routes/focus';
 import analyticsRoutes from './routes/analytics';
 import studyRoutes from './routes/study';
 import errorHandler from './middleware/errrorHandler';
+import streakRoutes from './routes/streak';
 
 
 dotenv.config();
@@ -38,6 +39,8 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/focus', focusRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/study', studyRoutes);
+app.use('/api/streak', streakRoutes); 
+
 
 // health
 app.get('/api/health', (req, res) => res.json({ ok: true }));

@@ -1,31 +1,28 @@
-
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons"; // expo install @expo/vector-icons
-import { LinearGradient } from 'expo-linear-gradient'; // expo install expo-linear-gradient
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
   streakDays: number;
-  completedDays: string[]; // e.g. ["Mon", "Tue", "Wed"]
+  completedDays: string[];
 };
 
 function getStreakMessage(streak: number) {
-    if (streak >= 200) return `Legendary! ${streak} days and counting‼️`;
-    if (streak >= 100) return `Incredible! ${streak} days and counting‼️`;
-    if (streak >= 50) return `Amazing! ${streak} days and counting‼️`;
-    if (streak >= 20) return `Superb! ${streak} days‼️`;
-    if (streak >= 10) return `Great job! ${streak} days and counting‼️`;
-    if (streak >= 6) return `Looking Good! ${streak} days and counting ‼️`;
-    return null;
+  if (streak >= 200) return `Legendary! ${streak} days and counting‼️`;
+  if (streak >= 100) return `Incredible! ${streak} days and counting‼️`;
+  if (streak >= 50) return `Amazing! ${streak} days and counting‼️`;
+  if (streak >= 20) return `Superb! ${streak} days‼️`;
+  if (streak >= 10) return `Great job! ${streak} days and counting‼️`;
+  if (streak >= 6) return `Looking Good! ${streak} days and counting ‼️`;
+  return null;
 }
-
-// ...existing code...
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-
 export default function Streak({ streakDays, completedDays }: Props) {
   const message = getStreakMessage(streakDays);
+
   return (
     <LinearGradient
       colors={["#0089EB", "#8f00ff"]}
@@ -73,7 +70,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     width: "100%",
-    // backgroundColor removed for gradient
   },
   motivational: {
     color: "#fff",
